@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mon Train">
+<meta name="theme-color" content="#0b1a33">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Mon Train</title>
+<style>
+  :root {
+    --bg: #f2f4f8; --card: #ffffff; --text: #101828; --muted: #667085; --line: #e4e7ec;
+    --accent: #1d4ed8; --ok: #12a150; --warn: #c27c00; --late: #e8590c; --bad: #d92d20; --info: #0b84c6;
+    --chip: #e8edf7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1a33; --card: #15284a; --text: #f5f7fa; --muted: #98a2b3; --line: #24395f;
+      --accent: #5b8cff; --ok: #32d583; --warn: #fdd94a; --late: #ff9f45; --bad: #ff6b5e; --info: #64d2ff;
+      --chip: #1d3460;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  body { padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px); max-width: 560px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  h1 { font-size: 26px; margin: 0; flex: 1; letter-spacing: -0.02em; }
+  .iconbtn { border: 0; background: var(--chip); color: var(--text); width: 40px; height: 40px; border-radius: 12px;
+    font-size: 18px; cursor: pointer; display: grid; place-items: center; }
+  .iconbtn.spin span { display: inline-block; animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loc { font-size: 14px; color: var(--muted); margin: -4px 0 14px; min-height: 18px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--chip); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
+  .seg button { border: 0; background: transparent; color: var(--text); padding: 9px 0; border-radius: 10px; font-size: 15px; font-weight: 500; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.15); font-weight: 600; }
+  .card { background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 4px; border-left: 6px solid var(--muted);
+    box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .card.ok { border-left-color: var(--ok); } .card.leger { border-left-color: var(--warn); }
+  .card.retard, .card.correspondance { border-left-color: var(--late); } .card.annule { border-left-color: var(--bad); }
+  .route { font-size: 14px; color: var(--muted); }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 0 4px; }
+  .time { font-size: 38px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .time s { font-size: 20px; color: var(--muted); font-weight: 500; margin-right: 6px; }
+  .badge { font-size: 14px; font-weight: 700; padding: 5px 10px; border-radius: 999px; white-space: nowrap; color: #fff; background: var(--muted); }
+  .ok .badge { background: var(--ok); } .leger .badge { background: var(--warn); color: #1a1a1a; }
+  .retard .badge, .correspondance .badge { background: var(--late); } .annule .badge { background: var(--bad); }
+  .meta { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .msg { font-size: 13px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--chip); }
+  .planb { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .planb h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--info); margin: 0 0 6px; }
+  .planb li { list-style: none; font-size: 15px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+  .planb ul { margin: 0; padding: 0; }
+  .planb .sub { color: var(--muted); font-size: 13px; }
+  .link { text-align: center; font-size: 13px; color: var(--muted); padding: 8px 0; }
+  .link.bad { color: var(--bad); font-weight: 600; }
+  .empty, .error { background: var(--card); border-radius: 16px; padding: 18px; font-size: 15px; line-height: 1.45; }
+  .error { color: var(--bad); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+  dialog { border: 0; border-radius: 18px; padding: 20px; width: min(92vw, 460px); background: var(--card); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog h2 { margin: 0 0 14px; font-size: 20px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input { width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn { flex: 1; border: 0; border-radius: 12px; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
+    background: var(--chip); color: var(--text); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .hint { font-size: 13px; color: var(--muted); line-height: 1.4; margin-top: 6px; }
+  .hint a { color: var(--accent); }
+  .skeleton { height: 128px; border-radius: 16px; background: var(--card); margin-bottom: 14px; opacity: .6; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚆 Mon Train</h1>
+  <button class="iconbtn" id="refresh" aria-label="Actualiser"><span>↻</span></button>
+  <button class="iconbtn" id="openSettings" aria-label="Réglages">⚙︎</button>
+</header>
+<div class="loc" id="loc"></div>
+<div class="seg" role="group" aria-label="Trajet">
+  <button data-mode="auto">Auto</button>
+  <button data-mode="matin">Matin</button>
+  <button data-mode="soir">Soir</button>
+</div>
+<main id="main"></main>
+<footer id="footer"></footer>
+
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h2>Réglages</h2>
+    <label for="apiKey">Clé API SNCF</label>
+    <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Colle ta clé ici">
+    <div class="hint">Gratuite : crée-la sur <a href="https://numerique.sncf.com/startup/api/token-developpeur/" target="_blank" rel="noopener">numerique.sncf.com</a>. Elle reste uniquement sur ton iPhone.</div>
+    <div class="grid2">
+      <div><label for="h1">Gujan → Talence</label><input id="h1" type="time"></div>
+      <div><label for="h2">Talence → Blanquefort</label><input id="h2" type="time"></div>
+      <div><label for="h3">Blanquefort → Pessac</label><input id="h3" type="time"></div>
+      <div><label for="h4">Pessac → Gujan</label><input id="h4" type="time"></div>
+    </div>
+    <div class="hint">Pessac → Gujan vide = premier train après ton arrivée à Pessac.</div>
+    <div class="grid2">
+      <div><label for="seuil">Plan B si retard ≥ (min)</label><input id="seuil" type="number" min="1" max="60"></div>
+      <div><label for="corresp">Temps de correspondance (min)</label><input id="corresp" type="number" min="1" max="30"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" value="cancel" formnovalidate>Annuler</button>
+      <button class="btn primary" value="save" id="saveSettings">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+// ======================= CONFIGURATION PAR DÉFAUT =======================
+const DEFAUTS = {
+  seuilRetardMin: 10,
+  correspondanceMin: 4,
+  rayonGareKm: 3,
+  heures: ["08:17", "09:04", "18:22", ""],
+};
+const TRAJETS = [
+  { periode: "matin", de: "Gujan-Mestras", vers: "Talence-Médoc", planB: true },
+  { periode: "matin", de: "Talence-Médoc", vers: "Blanquefort", planB: true },
+  { periode: "soir",  de: "Blanquefort",   vers: "Pessac", planB: true },
+  { periode: "soir",  de: "Pessac",        vers: "Gujan-Mestras" },
+];
+const API = "https://api.sncf.com/v1/coverage/sncf/";
+const DEMO = new URLSearchParams(location.search).has("demo");
+
+// ============================== STOCKAGE ================================
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("montrain:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("montrain:" + k, JSON.stringify(v)); } catch (e) {} },
+};
+let reglages = Object.assign({}, DEFAUTS, store.get("reglages", {}));
+let cle = store.get("cle", "");
+let mode = store.get("mode", "auto");
+
+// =============================== OUTILS =================================
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, "0");
+const hhmm = (d) => (d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : "--:--");
+const toNav = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+const navDate = (s) => s ? new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(9, 11), +s.slice(11, 13), +s.slice(13, 15) || 0) : null;
+const minEntre = (a, b) => Math.round((b - a) / 60000);
+const plusMin = (d, m) => new Date(d.getTime() + m * 60000);
+function aujourdhuiA(h) { const [H, M] = h.split(":").map(Number); const d = new Date(); d.setHours(H, M, 0, 0); return d; }
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function distanceKm(a, b) {
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(x));
+}
+const maintenant = () => DEMO ? aujourdhuiA(mode === "soir" ? "17:55" : "07:55") : new Date();
+const trajetsAvecHeures = () => TRAJETS.map((t, i) => ({ ...t, heure: reglages.heures[i] || null }));
+
+// ============================== API SNCF ================================
+async function api(path, params) {
+  const qs = new URLSearchParams(params).toString();
+  const r = await fetch(`${API}${path}?${qs}`, { headers: { Authorization: cle } });
+  if (r.status === 401 || r.status === 403) throw new Error("Clé API refusée : vérifie-la dans les réglages ⚙︎");
+  if (r.status === 429) throw new Error("Trop de requêtes, réessaie dans une minute.");
+  const json = await r.json().catch(() => ({}));
+  if (json.error && !["no_solution", "date_out_of_bounds"].includes(json.error.id)) throw new Error(json.error.message || json.error.id);
+  return json;
+}
+
+async function gares() {
+  if (DEMO) return DEMO_GARES;
+  const cache = store.get("gares", {});
+  for (const nom of [...new Set(TRAJETS.flatMap((t) => [t.de, t.vers]))]) {
+    if (cache[nom]) continue;
+    const res = await api("places", { q: nom, "type[]": "stop_area", count: 5 });
+    const p = (res.places || []).find((x) => x.embedded_type === "stop_area");
+    if (!p) throw new Error(`Gare introuvable : ${nom}`);
+    cache[nom] = { id: p.stop_area.id, nom: p.stop_area.name, lat: +p.stop_area.coord.lat, lon: +p.stop_area.coord.lon };
+  }
+  store.set("gares", cache);
+  return cache;
+}
+
+function lireTrajet(j, disruptions) {
+  const pt = (j.sections || []).find((s) => s.type === "public_transport");
+  if (!pt) return null;
+  const di = pt.display_informations || {};
+  const ids = (di.links || []).filter((l) => l.type === "disruption").map((l) => l.id);
+  const pert = (disruptions || []).filter((d) => ids.includes(d.id));
+  const effets = pert.map((d) => d.severity?.effect || "");
+  const message = pert.flatMap((d) => (d.messages || []).map((m) => m.text)).find((t) => t && t.length < 300);
+  const depart = navDate(pt.departure_date_time);
+  const departPrevu = navDate(pt.base_departure_date_time || pt.departure_date_time);
+  return {
+    numero: di.headsign || di.trip_short_name || "?",
+    mode: di.commercial_mode || "TER",
+    depart, departPrevu,
+    arrivee: navDate(pt.arrival_date_time),
+    arriveePrevue: navDate(pt.base_arrival_date_time || pt.arrival_date_time),
+    retard: Math.max(0, minEntre(departPrevu, depart)),
+    annule: effets.includes("NO_SERVICE"),
+    message,
+  };
+}
+
+async function trains(de, vers, apartir, freshness, count) {
+  if (DEMO) return demoTrains(de, vers, apartir, freshness, count);
+  const res = await api("journeys", {
+    from: de.id, to: vers.id, datetime: toNav(apartir), data_freshness: freshness,
+    max_nb_transfers: 0, direct_path: "none", count,
+  });
+  return (res.journeys || []).map((j) => lireTrajet(j, res.disruptions))
+    .filter((t) => t && t.depart >= plusMin(apartir, -1));
+}
+
+// ======================== ANALYSE D'UN TRAJET ===========================
+async function analyser(trajet, G, arrPrec) {
+  const de = G[trajet.de], vers = G[trajet.vers], now = maintenant();
+  const res = { trajet, train: null, statut: "ok", alternatives: [], note: null };
+  const debutPlanB = () => { const a = arrPrec ? plusMin(arrPrec, reglages.correspondanceMin) : now; return a > now ? a : now; };
+
+  if (!trajet.heure) {
+    const dispo = (await trains(de, vers, debutPlanB(), "realtime", 3)).filter((t) => !t.annule);
+    res.train = dispo[0] || null;
+    res.alternatives = dispo.slice(1, 2);
+    res.libre = true;
+    res.statut = !res.train ? "aucun" : res.train.retard >= reglages.seuilRetardMin ? "retard" : res.train.retard > 0 ? "leger" : "ok";
+    return res;
+  }
+
+  const debut = plusMin(aujourdhuiA(trajet.heure), -1);
+  const theo = await trains(de, vers, debut, "base_schedule", 2);
+  const ton = theo.find((t) => hhmm(t.departPrevu) === trajet.heure) || theo[0];
+  const reel = await trains(de, vers, debut, "realtime", 6);
+  let t = ton ? reel.find((r) => r.numero === ton.numero) : null;
+  if (ton && !t) t = { ...ton, annule: true };
+  res.train = t;
+
+  if (!t) res.statut = "aucun";
+  else if (t.annule) res.statut = "annule";
+  else if (t.depart < plusMin(now, -1)) res.statut = "parti";
+  else if (t.retard >= reglages.seuilRetardMin) res.statut = "retard";
+  else if (t.retard > 0) res.statut = "leger";
+
+  if (t && !t.annule && arrPrec && minEntre(arrPrec, t.depart) < reglages.correspondanceMin) {
+    res.note = `Correspondance compromise : arrivée prévue à ${hhmm(arrPrec)}`;
+    if (res.statut === "ok" || res.statut === "leger") res.statut = "correspondance";
+  }
+
+  const besoin = ["annule", "retard", "correspondance", "parti", "aucun"].includes(res.statut);
+  if (besoin && (trajet.planB || ["parti", "annule", "aucun"].includes(res.statut))) {
+    const autres = await trains(de, vers, debutPlanB(), "realtime", 5);
+    res.alternatives = autres.filter((x) => !x.annule && (!t || x.numero !== t.numero))
+      .sort((a, b) => a.arrivee - b.arrivee).slice(0, 3);
+  }
+  return res;
+}
+
+// ========================= CHOIX DES TRAJETS ============================
+function position() {
+  return new Promise((ok) => {
+    if (!navigator.geolocation) return ok(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => ok({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => ok(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 });
+  });
+}
+
+function choisir(G, pos, liste) {
+  const periodeHeure = maintenant().getHours() < 13 ? "matin" : "soir";
+  let proche = null, km = Infinity;
+  if (pos) for (const t of liste) { const d = distanceKm(pos, G[t.de]); if (d < km) { km = d; proche = t.de; } }
+  const ici = proche && km <= reglages.rayonGareKm ? proche : null;
+
+  if (mode !== "auto") {
+    let sel = liste.filter((t) => t.periode === mode);
+    const i = ici ? sel.findIndex((t) => t.de === ici) : -1;
+    if (i > 0) sel = sel.slice(i);
+    return { sel, periode: mode, ici, km };
+  }
+  let idx = -1;
+  if (ici) {
+    idx = liste.findIndex((t) => t.de === ici && t.periode === periodeHeure);
+    if (idx < 0) idx = liste.findIndex((t) => t.de === ici);
+  }
+  if (idx < 0) idx = liste.findIndex((t) => t.periode === periodeHeure);
+  const periode = liste[idx].periode;
+  return { sel: liste.slice(idx).filter((t) => t.periode === periode), periode, ici, km };
+}
+
+// ================================ RENDU =================================
+function badge(r) {
+  const t = r.train;
+  switch (r.statut) {
+    case "annule": return "Supprimé";
+    case "parti": return "Parti";
+    case "aucun": return "Aucun train";
+    case "correspondance": return t.retard ? `+${t.retard} min` : "Serré";
+    case "retard": case "leger": return `+${t.retard} min`;
+    default: return "À l'heure";
+  }
+}
+
+function carte(r) {
+  const t = r.train;
+  let html = `<article class="card ${r.statut}">
+    <div class="route">${esc(r.trajet.de)} → ${esc(r.trajet.vers)}${r.libre ? " · prochain train" : ""}</div>`;
+  if (!t) {
+    html += `<div class="row"><div class="time">--:--</div><span class="badge">${badge(r)}</span></div>
+      <div class="meta">Aucun train direct trouvé${r.trajet.heure ? " vers " + esc(r.trajet.heure) : ""}.</div>`;
+  } else {
+    const decale = t.retard > 0 && !t.annule;
+    html += `<div class="row"><div class="time">${decale ? `<s>${hhmm(t.departPrevu)}</s>${hhmm(t.depart)}` : hhmm(t.departPrevu)}</div>
+      <span class="badge">${badge(r)}</span></div>
+      <div class="meta">${esc(t.mode)} ${esc(t.numero)}${t.annule ? "" : ` · arrivée ${hhmm(t.arrivee)}${hhmm(t.arrivee) !== hhmm(t.arriveePrevue) ? ` (prévue ${hhmm(t.arriveePrevue)})` : ""}`}</div>`;
+    if (r.note) html += `<div class="msg">⚠️ ${esc(r.note)}</div>`;
+    if (t.message) html += `<div class="msg">ℹ️ ${esc(t.message)}</div>`;
+  }
+  if (r.alternatives.length) {
+    const titre = r.libre ? "Ensuite" : r.statut === "parti" ? "Trains suivants" : "Plan B";
+    html += `<div class="planb"><h3>${titre}</h3><ul>${r.alternatives.map((a) =>
+      `<li><b>${hhmm(a.depart)}</b> → arrivée <b>${hhmm(a.arrivee)}</b>${a.retard ? ` <span class="sub">(+${a.retard} min)</span>` : ""} <span class="sub">· ${esc(a.mode)} ${esc(a.numero)}</span></li>`).join("")}</ul></div>`;
+  } else if (["annule", "retard", "correspondance"].includes(r.statut) && r.trajet.planB) {
+    html += `<div class="planb"><h3>Plan B</h3><div class="sub">Aucun autre train direct dans l'immédiat. Pense au tram ou au bus.</div></div>`;
+  }
+  return html + `</article>`;
+}
+
+function lien(prec, suiv) {
+  const a = prec.train && !prec.train.annule ? prec.train : prec.alternatives[0];
+  const d = suiv.train && !suiv.train.annule ? suiv.train : suiv.alternatives[0];
+  if (!a || !d) return `<div class="link">⋮</div>`;
+  const m = minEntre(a.arrivee, d.depart);
+  const ko = m < reglages.correspondanceMin;
+  return `<div class="link ${ko ? "bad" : ""}">⇣ Correspondance à ${esc(prec.trajet.vers)} : ${m} min${ko ? " ⚠️" : ""}</div>`;
+}
+
+function afficherSegment() {
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+}
+
+// ================================= MAIN =================================
+let enCours = false;
+async function actualiser() {
+  if (enCours) return;
+  if (!cle && !DEMO) {
+    $("#main").innerHTML = `<div class="empty"><b>Bienvenue !</b><br>Pour voir tes trains en temps réel, il faut une clé API SNCF (gratuite).<br><br>
+      1. Crée-la sur <a href="https://numerique.sncf.com/startup/api/token-developpeur/" target="_blank" rel="noopener">numerique.sncf.com</a><br>
+      2. Colle-la dans les réglages.<br><br><button class="btn primary" onclick="ouvrirReglages()">Ouvrir les réglages</button></div>`;
+    $("#loc").textContent = "";
+    return;
+  }
+  enCours = true;
+  $("#refresh").classList.add("spin");
+  if (!$("#main").children.length || $("#main").querySelector(".empty,.error")) {
+    $("#main").innerHTML = `<div class="skeleton"></div><div class="skeleton"></div>`;
+  }
+  try {
+    const [G, pos] = await Promise.all([gares(), DEMO ? Promise.resolve(DEMO_POS) : position()]);
+    const { sel, periode, ici } = choisir(G, pos, trajetsAvecHeures());
+    $("#loc").textContent = ici ? `📍 Tu es à ${ici} · trajet du ${periode}`
+      : pos ? `📍 Loin de tes gares · trajet du ${periode}` : `📍 Position indisponible · trajet du ${periode}`;
+    const resultats = [];
+    let arrPrec = null;
+    for (const t of sel) {
+      const r = await analyser(t, G, arrPrec);
+      resultats.push(r);
+      const ref = r.train && !r.train.annule ? r.train : r.alternatives[0];
+      arrPrec = ref ? ref.arrivee : null;
+    }
+    $("#main").innerHTML = resultats.map((r, i) => (i ? lien(resultats[i - 1], r) : "") + carte(r)).join("");
+    $("#footer").textContent = `Mis à jour à ${hhmm(new Date())} · données SNCF temps réel${DEMO ? " (démo)" : ""}`;
+  } catch (e) {
+    $("#main").innerHTML = `<div class="error">${esc(e.message || "Erreur réseau")}</div>`;
+  } finally {
+    enCours = false;
+    $("#refresh").classList.remove("spin");
+  }
+}
+
+// ============================== RÉGLAGES ================================
+function ouvrirReglages() {
+  $("#apiKey").value = cle;
+  ["h1", "h2", "h3", "h4"].forEach((id, i) => ($("#" + id).value = reglages.heures[i] || ""));
+  $("#seuil").value = reglages.seuilRetardMin;
+  $("#corresp").value = reglages.correspondanceMin;
+  $("#settings").showModal();
+}
+$("#settings").addEventListener("close", () => {
+  if ($("#settings").returnValue !== "save") return;
+  cle = $("#apiKey").value.trim();
+  store.set("cle", cle);
+  reglages.heures = ["h1", "h2", "h3", "h4"].map((id) => $("#" + id).value);
+  reglages.seuilRetardMin = +$("#seuil").value || DEFAUTS.seuilRetardMin;
+  reglages.correspondanceMin = +$("#corresp").value || DEFAUTS.correspondanceMin;
+  store.set("reglages", reglages);
+  actualiser();
+});
+$("#openSettings").onclick = ouvrirReglages;
+$("#refresh").onclick = actualiser;
+document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => {
+  mode = b.dataset.mode; store.set("mode", mode); afficherSegment(); actualiser();
+}));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) actualiser(); });
+setInterval(() => { if (!document.hidden) actualiser(); }, 60000);
+
+// ================================ DÉMO ==================================
+// Ouvre la page avec ?demo pour voir un exemple sans clé API.
+const DEMO_GARES = {
+  "Gujan-Mestras": { id: "g", lat: 44.6355, lon: -1.0682 },
+  "Talence-Médoc": { id: "t", lat: 44.8152, lon: -0.5887 },
+  "Blanquefort":   { id: "b", lat: 44.9115, lon: -0.6346 },
+  "Pessac":        { id: "p", lat: 44.8056, lon: -0.6315 },
+};
+const DEMO_POS = { lat: 44.636, lon: -1.069 };
+function demoTrains(de, vers, apartir, freshness, count) {
+  const durees = { "g>t": 41, "t>b": 19, "b>p": 24, "p>g": 36 };
+  const k = de.id + ">" + vers.id, duree = durees[k] || 30;
+  const out = [];
+  const base = new Date(apartir); base.setMinutes(Math.ceil(base.getMinutes() / 30) * 30 + 4, 0, 0);
+  const premier = { "g>t": "08:17", "t>b": "09:04", "b>p": "18:22" }[k];
+  const debut = premier && Math.abs(minEntre(aujourdhuiA(premier), apartir)) < 30 ? aujourdhuiA(premier) : base;
+  for (let i = 0; i < count; i++) {
+    const prevu = plusMin(debut, i * 30);
+    const num = String(864000 + prevu.getHours() * 100 + prevu.getMinutes());
+    let retard = 0, annule = false;
+    if (freshness === "realtime") {
+      if (k === "g>t" && hhmm(prevu) === "08:17") retard = 3;
+      if (k === "t>b" && hhmm(prevu) === "09:04") retard = 14;
+      if (k === "b>p" && hhmm(prevu) === "18:22") annule = true;
+    }
+    if (annule) continue;
+    out.push({ numero: num, mode: "TER", departPrevu: prevu, depart: plusMin(prevu, retard),
+      arriveePrevue: plusMin(prevu, duree), arrivee: plusMin(prevu, duree + retard), retard, annule,
+      message: retard >= 10 ? "Retard dû à un incident d'exploitation (exemple)." : undefined });
+  }
+  return Promise.resolve(out.filter((t) => t.depart >= plusMin(apartir, -1)));
+}
+
+afficherSegment();
+actualiser();
+</script>
+</body>
+</html>
